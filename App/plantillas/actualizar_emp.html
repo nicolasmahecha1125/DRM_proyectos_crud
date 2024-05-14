@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actualizar Empleado</title>
+</head>
+<body>
+  <h1>Actualizar Empleado (ID: {{ empleado.id }})</h1>
+
+  <form id="actualizarEmpleadoForm" method="put">
+    {% csrf_token %}
+    <input type="hidden" id="id" name="id" value="{{ empleado.id }}">
+
+    <label for="username">Nombre de usuario:</label>
+    <input type="text" id="username" name="username" required>
+    <span id="username-error" class="error-message"></span><br>
+
+    <label for="email">Correo electrónico:</label>
+    <input type="email" id="email" name="email" required>
+    <span id="email-error" class="error-message"></span><br>
+
+    <input type="submit" value="Actualizar Empleado">
+  </form>
+</body>
+</html>

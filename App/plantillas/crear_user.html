@@ -1,0 +1,52 @@
+
+<!-- plantillas/crear_user.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Usuario</title>
+</head>
+<body>
+    <h1>Crear Nuevo Usuario</h1>
+    <form id="crearUsuarioForm" method="post">
+        {% csrf_token %}
+        <label for="username">Nombre de usuario:</label>
+        <input type="text" id="username" name="username" required><br>
+
+        <label for="password">Contraseña:</label>
+        <input type="password" id="password" name="password" required><br>
+
+        <label for="email">Correo electrónico:</label>
+        <input type="email" id="email" name="email" required><br>
+
+        <input type="submit" value="Crear Usuario">
+    </form>
+
+    <script>
+        document.getElementById('crearUsuarioForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Evitar que se envíe el formulario automáticamente
+
+            // Obtener los datos del formulario
+            const formData = new FormData(event.target);
+            const jsonData = {};
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+
+            // Enviar los datos como JSON
+            fetch('{% url "crear_usuario" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}' // Agregar el token CSRF
+                },
+                body: JSON.stringify(jsonData)
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>

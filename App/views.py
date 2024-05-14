@@ -4,67 +4,79 @@ from rest_framework import status
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from App.models import Empleado
-from App.serializers import EmpleadoSerializer
+from App.serializers import AdminSerializer
 from django.contrib.auth import authenticate, login
-from django.contrib.auth.decorators import user_passes_test
+from rest_framework.views import APIView
+from django.contrib.auth.models import User
+from django.http import JsonResponse
+import json
+from App.models import Empleado 
+from rest_framework.permissions import IsAuthenticated 
+from rest_framework.response import Response
+
 
 @csrf_exempt
-def crear_empleado(request):
+def crear_usuario(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
-        nombre = data['nombre']
-        apellido = data['apellido']
-        email = data['email']
-        departamento = data['departamento']
-        salario = data['salario']
+        
+        if 'application/json' in request.content_type:
+            try:
+                data = json.loads(request.body)
+                username = data.get('username')
+                password = data.get('password')
+                email = data.get('email')
 
-        empleado = Empleado.objects.create(
-            nombre = nombre,
-            apellido = apellido,
-            email = email,
-            departamento = departamento,
-            salario = salario
-        )
+               
+                if not username or not password or not email:
+                    return JsonResponse({'message': 'Faltan campos obligatorios'}, status=400)
 
-        response_data = {
-            'message': 'Empleado creado con éxito',
-            'data': {
-                'id': empleado.id, 
-                'nombre': empleado.nombre,
-                'apellido': empleado.apellido,
-                'email': empleado.email,
-                'departamento': empleado.departamento,
-                'salario': empleado.salario,
-                }
-            }
-        return JsonResponse(response_data,status=201)
-    return JsonResponse({'message':'Metodo no permitido'}, status=405)    
+                
+                if User.objects.filter(username=username).exists():
+                    return JsonResponse({'message': 'El usuario ya existe'}, status=402)
 
+               
+                user = User.objects.create_user(username=username, email=email, password=password)
+                return JsonResponse({'message': 'Usuario creado con éxito', 'username': user.username}, status=201)
+            except json.JSONDecodeError:
+                return JsonResponse({'message': 'Error en el formato de datos JSON'}, status=400)
+        else:
+            return JsonResponse({'message': 'La solicitud no contiene datos JSON'}, status=400)
+
+   
+    return render(request, 'crear_user.html')
 @csrf_exempt
 def leer_empleados(request):
+    
     if request.method == 'GET':
-        empleados = Empleado.objects.all()
-        serialized_data = EmpleadoSerializer(empleados, many=True)
-        return JsonResponse(serialized_data.data, status=status.HTTP_200_OK)
-    return JsonResponse({'message':'Metodo no permitido'}, status=status.HTTP_405)
+        empleados = Empleado.objects.all()  
 
+   
+    employee_data = []
+    for empleado in empleados:
+        employee_data.append({
+            'id': empleado.id,
+            'nombre': empleado.nombre,
+            'apellido': empleado.apellido,
+            'correo': empleado.email,
+            'trabajos': empleado.trabajo  
+        })
+
+    
+   
+    return JsonResponse({'empleados': employee_data})
+        
 @csrf_exempt
 def actualizar_empleado(request, id):
-    try:
-        empleado = Empleado.objects.get(pk=id)
-    except Empleado.DoesNotExist:
-        return JsonResponse({'message': 'Empleado no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    empleado = Empleado.objects.get(pk=id)  
     if request.method == 'PUT':
-        data = json.loads(request.body)
-        serializer = EmpleadoSerializer(empleado,data=data, partial=True)
-
+        serializer = AdminSerializer(empleado, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return JsonResponse(serializer.data, status=status.HTTP_200_OK)
-        return JsonResponse(serializer.errors, status=status.HTTP_400_BAD_REQUEST)    
-    
-    return JsonResponse({'message': 'Metodo no permitido'}, status=status.HTTP_405)
-
+            return JsonResponse(serializer.data)  
+        else:
+         return JsonResponse(serializer.errors, status=400)  
+    else:
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
 @csrf_exempt
 def eliminar_empleado(request,id):
     try:
@@ -95,11 +107,43 @@ def login_usuario(request):
             
 
 
+class EmpleadoList(APIView):
+    permission_classes = [IsAuthenticated] 
 
+    def get(self, request):
+        empleados = Empleado.objects.all()
+        serializer = AdminSerializer(empleados, many=True)
+        return Response(serializer.data)
 
+class EmpleadoDetail(APIView):
+    permission_classes = [IsAuthenticated]
 
-    
+    def get(self, request, pk):
+        try:
+            empleado = Empleado.objects.get(pk=pk)
+            serializer = AdminSerializer(empleado)
+            return Response(serializer.data)
+        except Empleado.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
+    def put(self, request, pk):
+        try:
+            empleado = Empleado.objects.get(pk=pk)
+            serializer = AdminSerializer(empleado, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Empleado.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, pk):
+        try:
+            empleado = Empleado.objects.get(pk=pk)
+            empleado.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Empleado.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 
